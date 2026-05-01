@@ -1,9 +1,8 @@
 import fitz
 from docx import Document
 import openpyxl
-import chromadb
 import google.generativeai as genai
-from chromadb.utils import embedding_functions
+from pinecone import Pinecone
 import os
 from dotenv import load_dotenv
 
@@ -11,9 +10,24 @@ load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../env", "
 
 # ── Constants ─────────────────────────────────────────
 DATA_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data")
-CHROMA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../chroma_store")
 COLLECTION_NAME = "contract_docs"
 SUPPORTED_FORMATS = {".pdf", ".docx", ".xlsx"}
+INDEX_NAME = os.environ.get("PINECONE_INDEX", "doc-intelligence")
+
+# ── Pinecone + Gemini setup ───────────────────────────
+def get_pinecone_index():
+    pc = Pinecone(api_key=os.environ.get("PINECONE_API_KEY"))
+    return pc.Index(INDEX_NAME)
+
+def get_embedding(text: str) -> list:
+    """Generate embedding using Gemini"""
+    genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+    result = genai.embed_content(
+        model="models/gemini-embedding-001",
+        content=text,
+        task_type="retrieval_document"
+    )
+    return result["embedding"]
 
 #Extractors
 def extract_pdf(filepath):
@@ -173,36 +187,51 @@ def chunk_sections(sections, source_filename, chunk_size=200, overlap=50):
     return [c for c in all_chunks if len(c["content"].strip()) > 50]
 
 
-#-------- Store in ChromaDB -----
-def store_in_chromadb(all_chunks,all_ids,all_metadata):
-    api_key = os.environ.get("GEMINI_API_KEY")
-    google_gf  = embedding_functions.GoogleGenerativeAiEmbeddingFunction(
-        model_name="models/gemini-embedding-001",
-        api_key=api_key
-        )
-    
-    chroma_client = chromadb.PersistentClient(path=CHROMA_PATH)
-    try:
-        chroma_client.delete_collection(COLLECTION_NAME)
-    except:
-        pass
+# ── Pinecone Storage ──────────────────────────────────
+def store_in_pinecone(all_chunks):
+    index = get_pinecone_index()
 
-    collection = chroma_client.create_collection(
-        name=COLLECTION_NAME,
-        embedding_function=google_gf,
+    # clear existing vectors only if present
+    stats = index.describe_index_stats()
+    if stats["total_vector_count"] > 0:
+        print("🧹  Clearing existing vectors...")
+        index.delete(delete_all=True)
+        print("🗑️  Cleared existing vectors")
+    else:
+        print("Index is empty - skipping delete")    
 
-    )
-
+    # embed and store in batches of 50
     batch_size = 50
-    for i in range(0, len(all_chunks), batch_size):
-        collection.add(
-            documents=all_chunks[i:i+batch_size],
-            ids = all_ids[i:i+batch_size],
-            metadatas=all_metadata[i:i+batch_size]
-        )
+    vectors = []
 
-    print(f"Stored {collection.count()} chunks in ChromaDB")
-    return collection
+    for i, chunk in enumerate(all_chunks):
+        print(f"  Embedding chunk {i+1}/{len(all_chunks)}...")
+        embedding = get_embedding(chunk["content"])
+        vectors.append({
+            "id": f"{chunk['source']}_chunk_{i}",
+            "values": embedding,
+            "metadata": {
+                "content": chunk["content"],
+                "source": chunk["source"],
+                "section_type": chunk["section_type"],
+                "section_id": chunk["section_id"],
+                "format": os.path.splitext(chunk["source"])[1].lower()
+            }
+        })
+
+        # store in batches
+        if len(vectors) >= batch_size:
+            index.upsert(vectors=vectors)
+            print(f"  ✅ Stored batch of {len(vectors)}")
+            vectors = []
+
+    # store remaining
+    if vectors:
+        index.upsert(vectors=vectors)
+        print(f"  ✅ Stored final batch of {len(vectors)}")
+
+    stats = index.describe_index_stats()
+    print(f"\n✅ Total vectors in Pinecone: {stats['total_vector_count']}")
 
 # ── Main Pipeline ─────────────────────────────────────
 def run_pipeline():
@@ -215,30 +244,20 @@ def run_pipeline():
 
     # Step 2 — Chunk all documents
     all_chunks = []
-    all_ids = []
-    all_metadata = []
 
     print("\n📄 Chunking documents...")
     for doc_name, sections in documents.items():
         chunks = chunk_sections(sections, doc_name)
-        for i, chunk in enumerate(chunks):
-            all_chunks.append(chunk["content"])
-            all_ids.append(f"{doc_name}_chunk_{i}")
-            all_metadata.append({
-                "source": chunk["source"],
-                "section_type": chunk["section_type"],
-                "section_id": chunk["section_id"],
-                "format": os.path.splitext(doc_name)[1].lower()
-            })
+        all_chunks.extend(chunks)
         print(f"  {doc_name}: {len(chunks)} chunks")
 
     print(f"\n✅ Total chunks: {len(all_chunks)}")
 
-    # Step 3 — Store in ChromaDB
-    print("\n💾 Storing in ChromaDB...")
-    store_in_chromadb(all_chunks, all_ids, all_metadata)
+    # Step 3 — Store in Pinecone
+    print("\n💾 Storing in PineCone...")
+    store_in_pinecone(all_chunks)
 
-    print("\n🎉 Pipeline complete! ChromaDB ready for agent queries.")
+    print("\n🎉 Pipeline complete! PineVector DB ready for agent queries.")
 
 if __name__ == "__main__":
     run_pipeline()

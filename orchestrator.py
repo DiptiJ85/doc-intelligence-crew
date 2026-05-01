@@ -17,8 +17,10 @@ from tasks.analysis_task import create_analysis_task
 from tasks.action_task import create_action_task
 from tasks.summary_task import create_summary_task  
 from utils.logger import get_logger
+import time
 
 logger = get_logger(__name__)
+
 
 def run_crew(user_request:str):
     logger.info("="*60)
@@ -79,16 +81,26 @@ if __name__ == "__main__":
     log_file = open(log_path, "w", encoding="utf-8")
     sys.stdout = Tee(sys.stdout, log_file)
     sys.stderr = Tee(sys.stderr, log_file)
-
-    result = run_crew(
-        """Analyze all vendor contracts in our knowledge base.
-        Identify critical risks, upcoming deadlines, compliance gaps,
-        and provide a clear recommendation on which need immediate attention."""
-    )
-
-    print("\n" + "=" * 60)
-    print("EXECUTIVE SUMMARY")
-    print("=" * 60)
-    print(result)
-
-                                       
+    # retry logic for rate limits
+    max_attempts = 3
+    for attempt in range(max_attempts):
+        try:
+            result = run_crew(
+                """Analyze all vendor contracts in our knowledge base.
+                Identify critical risks, upcoming deadlines, compliance gaps,
+                and provide a clear recommendation on which need immediate attention."""
+            )
+            print("\n" + "=" * 60)
+            print("EXECUTIVE SUMMARY")
+            print("=" * 60)
+            print(result)
+            break
+        except Exception as e:
+            if "429" in str(e) or "quota" in str(e).lower() or "503" in str(e):
+                wait = (attempt + 1) * 30
+                print(f"\n Rate limited (attempt {attempt+1}/{max_attempts}) - waiting {wait} seconds...")
+                time.sleep(wait)
+            else:
+                raise e
+    else:
+        print("❌ Max retries exceeded — try again later")

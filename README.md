@@ -197,3 +197,5 @@ Interactive docs: `http://localhost:8000/docs`
 **Dipti Joshi**
 Senior Software Engineer → Agentic AI Engineer
 [LinkedIn](https://linkedin.com/in/joshidipti) | [GitHub](https://github.com/diptij85)
+
+[def]: architecture.png
