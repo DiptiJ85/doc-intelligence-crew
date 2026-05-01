@@ -3,7 +3,6 @@ import requests
 import os
 import time
 
-# ── Page Config ───────────────────────────────────────
 st.set_page_config(
     page_title="Document Intelligence Crew",
     page_icon="📄",
@@ -12,16 +11,12 @@ st.set_page_config(
 
 API_BASE = "http://localhost:8000"
 
-# ── Header ────────────────────────────────────────────
 st.title("📄 Document Intelligence Crew")
 st.markdown("*Multi-agent AI system for enterprise contract analysis*")
 st.divider()
 
-# ── Sidebar ───────────────────────────────────────────
 with st.sidebar:
     st.header("⚙️ System Status")
-
-    # health check
     try:
         response = requests.get(f"{API_BASE}/health", timeout=3)
         if response.status_code == 200:
@@ -32,8 +27,6 @@ with st.sidebar:
         st.error("❌ API Offline — run uvicorn app:app")
 
     st.divider()
-
-    # documents in system
     st.header("📁 Documents in System")
     try:
         docs_response = requests.get(f"{API_BASE}/documents", timeout=3)
@@ -47,11 +40,20 @@ with st.sidebar:
     except:
         st.warning("Could not fetch documents")
 
-# ── Main Layout ───────────────────────────────────────
-col1, col2 = st.columns([1, 1])
+# ── initialize session state FIRST ───────────────────
+if "request_input" not in st.session_state:
+    st.session_state.request_input = "Analyze all vendor contracts in our knowledge base. Identify critical risks, upcoming deadlines, compliance gaps, and provide a clear recommendation on which need immediate attention."
 
-# ── Left Column — Upload + Request ───────────────────
-with col1:
+# ── Main Layout ───────────────────────────────────────
+main_col1, main_col2 = st.columns([1, 1])  # ← renamed to avoid conflict
+
+
+def set_prompt(prompt):
+    st.session_state.user_request = prompt
+    st.session_state.request_input = prompt  # ← also update the text area key directly
+
+
+with main_col1:
     st.subheader("📤 Upload Contracts")
     uploaded_files = st.file_uploader(
         "Drop your contract files here",
@@ -85,29 +87,59 @@ with col1:
                     st.error(f"Error: {e}")
 
     st.divider()
-
     st.subheader("💬 Your Request")
+
+    # quick prompt buttons — use different variable names
+    st.markdown("**Quick prompts:**")
+    prompt_col1, prompt_col2, prompt_col3 = st.columns(3)  # ← renamed
+
+    with prompt_col1:
+        st.button(
+            "🔴 Critical risks",
+            use_container_width=True,
+            on_click=set_prompt,
+            args=["Identify only CRITICAL and HIGH severity risks across all vendor contracts. What needs immediate attention in the next 48 hours?"]
+        )
+            
+
+    with prompt_col2:
+        st.button(
+            "💰 Financial exposure",
+            use_container_width=True,
+            on_click=set_prompt,
+            args=["What is our total financial exposure across all vendor contracts? Which contracts have the highest risk of unexpected costs?"]
+        )
+        
+    with prompt_col3:
+        st.button(
+            "📋 Full analysis", 
+            use_container_width=True,
+            on_click=set_prompt,
+            args=["Analyze all vendor contracts in our knowledge base. Identify critical risks, upcoming deadlines, compliance gaps, and provide a clear recommendation."]
+        )
+
+    # text area — always rendered, reads from session state
     user_request = st.text_area(
-        "What would you like to analyze?",
-        value="Analyze all vendor contracts in our knowledge base. Identify critical risks, upcoming deadlines, compliance gaps, and provide a clear recommendation on which contracts need immediate attention.",
-        height=150
+        "Or type your own request:",
+        height=150,
+        key="request_input"
     )
 
+    # analyze button — outside any column
     analyze_btn = st.button(
         "🚀 Analyze Contracts",
         use_container_width=True,
         type="primary"
     )
 
-# ── Right Column — Results ────────────────────────────
-with col2:
+
+with main_col2:
     st.subheader("📊 Analysis Results")
 
     if analyze_btn:
         if not user_request.strip():
             st.warning("Please enter a request first")
         else:
-            # agent trace display
             st.markdown("**🤖 Agent Pipeline**")
             agents = [
                 ("RAG Agent",        "Retrieving contract information..."),
@@ -117,7 +149,6 @@ with col2:
                 ("Summary Agent",    "Writing executive summary..."),
             ]
 
-            # create placeholders for each agent
             placeholders = []
             for agent_name, _ in agents:
                 ph = st.empty()
@@ -127,24 +158,23 @@ with col2:
             st.divider()
             result_placeholder = st.empty()
 
-            # kick off analysis
             with st.spinner("Running multi-agent analysis..."):
                 try:
-                    # animate agent statuses
                     for i, (agent_name, message) in enumerate(agents):
                         placeholders[i].warning(f"🔄 {agent_name} — {message}")
                         time.sleep(0.5)
 
-                    # call API
                     response = requests.post(
                         f"{API_BASE}/analyze",
                         json={"user_request": user_request},
-                        timeout=300       # 5 min timeout for full crew run
+                        timeout=300
                     )
+                    # handle non-200 responses
+                    if response.status_code != 200:
+                        result_placeholder.error(f"API error: {response.status_code}")
+                    else:
+                        result = response.json()
 
-                    result = response.json()
-
-                    # mark all agents complete
                     for i, (agent_name, _) in enumerate(agents):
                         placeholders[i].success(f"✅ {agent_name} — complete")
 
@@ -152,8 +182,6 @@ with col2:
                         result_placeholder.success("✅ Analysis Complete!")
                         st.subheader("📋 Executive Summary")
                         st.markdown(result["summary"])
-
-                        # download button
                         st.download_button(
                             label="⬇️ Download Report",
                             data=result["summary"],
@@ -161,12 +189,36 @@ with col2:
                             mime="text/plain",
                             use_container_width=True
                         )
-                    else:
-                        result_placeholder.error(f"Analysis failed: {result['message']}")
+                    elif result["status"] == "error":
+                        msg = result.get("message", "Unknown error")
+                        if "429" in msg or "quota" in msg.lower():
+                            result_placeholder.warning("⚠️ Rate limit reached — please wait 2 minutes and try again")
+                        elif "503" in msg:
+                            result_placeholder.warning("⚠️ Gemini API overloaded — please wait 2-3 minutes and try again")
+                        else:
+                            result_placeholder.error(f"Analysis failed: {msg}")
 
                 except requests.exceptions.Timeout:
                     result_placeholder.error("⏱️ Request timed out — agents may still be running")
                 except Exception as e:
-                    result_placeholder.error(f"Error: {e}")
+                    error_msg = str(e)
+                    if "429" in error_msg or "quota" in error_msg.lower():
+                        result_placeholder.warning("""
+                        ⚠️ **Rate limit reached**
+                        
+                        Gemini API free tier has a request limit. 
+                        
+                        **Options:**
+                        - Wait 1-2 minutes and try again
+                        - The system will auto-retry shortly
+                        """)
+                    elif "503" in error_msg:
+                        result_placeholder.warning("""
+                        ⚠️ **Gemini API temporarily overloaded**
+                        
+                        Please wait 2-3 minutes and try again.
+                        """)
+                    else:
+                        result_placeholder.error(f"Error: {error_msg}")
     else:
         st.info("👈 Upload documents and click **Analyze Contracts** to start")
