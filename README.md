@@ -4,7 +4,7 @@
 ![CrewAI](https://img.shields.io/badge/CrewAI-Multi--Agent-green)
 ![FastAPI](https://img.shields.io/badge/FastAPI-REST%20API-009688)
 ![Streamlit](https://img.shields.io/badge/Streamlit-UI-FF4B4B)
-![ChromaDB](https://img.shields.io/badge/ChromaDB-Vector%20Store-orange)
+!PineCone Vector DB https://app.pinecone.io/organizations
 ![Gemini](https://img.shields.io/badge/Gemini-2.5%20Flash-4285F4)
 
 > A production-grade multi-agent AI system for enterprise contract analysis.
@@ -18,7 +18,7 @@
 
 📄 Documents (PDF + DOCX + XLSX)
 ↓
-[RAG Pipeline]   → chunk → embed → ChromaDB
+[RAG Pipeline]   → chunk → embed → PineCone Vector DB
 ↓
 [RAG Agent]      → autonomous search + rerank + reflect
 ↓
@@ -41,7 +41,7 @@
 - **Agentic RAG** — autonomous retrieval with re-ranking and self-reflection
 - **Multi-Format Ingestion** — PDF, DOCX, XLSX document support
 - **Pydantic Typed Contracts** — strongly typed inter-agent schemas
-- **Vector Semantic Search** — ChromaDB + Google text-embedding-001
+- **Vector Semantic Search** — Pinecone VectorDB + Google text-embedding-001
 - **Re-ranking** — cross-encoder scoring for precision retrieval
 - **Self-Reflection** — agent evaluates its own retrieval completeness
 - **REST API** — FastAPI with 4 endpoints + Swagger docs
@@ -58,7 +58,7 @@
 | **Agent Orchestration** | CrewAI |
 | **LLM** | Google Gemini 2.5 Flash |
 | **Embeddings** | Google gemini-embedding-001 |
-| **Vector Store** | ChromaDB |
+| **Vector Store** | Pinecone VectorDB |
 | **RAG Strategy** | Agentic RAG + Re-ranking + Reflection |
 | **Typed Contracts** | Pydantic AI |
 | **Backend API** | FastAPI + Uvicorn |
@@ -81,11 +81,11 @@ doc-intelligence-crew/
 ├── schemas/                   # Pydantic typed inter-agent contracts
 │   └── contract_schemas.py    # ExtractedDoc, AnalysisResult, ActionPlan
 ├── tools/                     # CrewAI tools
-│   ├── search_tool.py         # ChromaDB semantic search
+│   ├── search_tool.py         # Pinecone VectorDB semantic search
 │   ├── reranker_tool.py       # Cross-encoder re-ranking
 │   └── reflection_tool.py     # Coverage self-reflection
 ├── config/                    # Configuration
-│   └── llm_config.py          # LLM + ChromaDB setup
+│   └── llm_config.py          # LLM + PineCone VectorDB setup
 ├── pipeline/                  # RAG ingestion pipeline
 │   └── rag_pipeline.py        # Load → chunk → embed → store
 ├── api/                       # FastAPI routes
@@ -132,13 +132,14 @@ cp .env.example env/.env
 # add your API keys
 GEMINI_API_KEY=your-gemini-api-key
 GOOGLE_API_KEY=your-gemini-api-key
-CHROMA_GOOGLE_GENAI_API_KEY=your-gemini-api-key
+PINECONE_API_KEY-your-pinecone-api-key
+PINECONE_INDEX=doc-intelligence
 ```
 
 ### Run
 
 ```bash
-# Step 1 — ingest documents into ChromaDB
+# Step 1 — ingest documents into PineCone VectorDB
 python pipeline/rag_pipeline.py
 
 # Step 2 — start FastAPI backend
