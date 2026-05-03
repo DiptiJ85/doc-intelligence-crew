@@ -58,7 +58,7 @@
 | **Agent Orchestration** | CrewAI |
 | **LLM** | Google Gemini 2.5 Flash |
 | **Embeddings** | Google gemini-embedding-001 |
-| **Vector Store** | ChromaDB |
+| **Vector Store** | PineCone VectorDB |
 | **RAG Strategy** | Agentic RAG + Re-ranking + Reflection |
 | **Typed Contracts** | Pydantic AI |
 | **Backend API** | FastAPI + Uvicorn |
@@ -81,11 +81,11 @@ doc-intelligence-crew/
 ├── schemas/                   # Pydantic typed inter-agent contracts
 │   └── contract_schemas.py    # ExtractedDoc, AnalysisResult, ActionPlan
 ├── tools/                     # CrewAI tools
-│   ├── search_tool.py         # ChromaDB semantic search
+│   ├── search_tool.py         # PineCone VectorDB semantic search
 │   ├── reranker_tool.py       # Cross-encoder re-ranking
 │   └── reflection_tool.py     # Coverage self-reflection
 ├── config/                    # Configuration
-│   └── llm_config.py          # LLM + ChromaDB setup
+│   └── llm_config.py          # LLM + PineCone VectorDB setup
 ├── pipeline/                  # RAG ingestion pipeline
 │   └── rag_pipeline.py        # Load → chunk → embed → store
 ├── api/                       # FastAPI routes
@@ -132,7 +132,8 @@ cp .env.example env/.env
 # add your API keys
 GEMINI_API_KEY=your-gemini-api-key
 GOOGLE_API_KEY=your-gemini-api-key
-CHROMA_GOOGLE_GENAI_API_KEY=your-gemini-api-key
+PINECONE_API_KEY-your-pinecone-api-key
+PINECONE_INDEX=doc-intelligence
 ```
 
 ### Run
