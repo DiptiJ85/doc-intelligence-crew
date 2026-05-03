@@ -18,7 +18,7 @@
 
 📄 Documents (PDF + DOCX + XLSX)
 ↓
-[RAG Pipeline]   → chunk → embed → PineCone Vector DB
+[RAG Pipeline]   → chunk → embed → Pinecone Vector DB
 ↓
 [RAG Agent]      → autonomous search + rerank + reflect
 ↓
