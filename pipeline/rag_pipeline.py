@@ -5,14 +5,19 @@ import google.generativeai as genai
 from pinecone import Pinecone
 import os
 from dotenv import load_dotenv
+from google.cloud import storage
 
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../env", ".env"))
 
+
 # ── Constants ─────────────────────────────────────────
-DATA_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data")
+
+BUCKET_NAME = "document-intelligence-crew-data"
+TMP_FOLDER = "/tmp/contracts"
 COLLECTION_NAME = "contract_docs"
 SUPPORTED_FORMATS = {".pdf", ".docx", ".xlsx"}
 INDEX_NAME = os.environ.get("PINECONE_INDEX", "doc-intelligence")
+
 
 # ── Pinecone + Gemini setup ───────────────────────────
 def get_pinecone_index():
@@ -28,6 +33,26 @@ def get_embedding(text: str) -> list:
         task_type="retrieval_document"
     )
     return result["embedding"]
+
+def download_from_gcs():
+    """Download all contracts from GCS to local tmp folder"""
+    os.makedirs(TMP_FOLDER, exist_ok=True)
+    client = storage.Client()
+    bucket = client.bucket(BUCKET_NAME)
+    blobs = bucket.list_blobs(prefix="contracts/")
+
+    downloaded = []
+    for blob in blobs:
+        filename = os.path.basename(blob.name)
+        ext = os.path.splitext(filename)[1].lower()
+        if ext in SUPPORTED_FORMATS:
+            local_path = os.path.join(TMP_FOLDER, filename)
+            blob.download_to_filename(local_path)
+            downloaded.append(filename)
+            print(f"  ✅ Downloaded: {filename}")
+
+    print(f"\n✅ Downloaded {len(downloaded)} files from GCS")
+    return TMP_FOLDER
 
 #Extractors
 def extract_pdf(filepath):
@@ -239,8 +264,11 @@ def run_pipeline():
     print("DOCUMENT INTELLIGENCE — RAG PIPELINE")
     print("=" * 60)
 
+    # Step 0 — Load all documents from GCS
+    data_folder = download_from_gcs()
+
     # Step 1 — Load all documents
-    documents = load_all_documents(DATA_FOLDER)
+    documents = load_all_documents(data_folder)
 
     # Step 2 — Chunk all documents
     all_chunks = []

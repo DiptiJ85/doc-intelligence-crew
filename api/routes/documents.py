@@ -1,22 +1,28 @@
 from fastapi import APIRouter, UploadFile, File
 import shutil
-from pipeline.rag_pipeline import run_pipeline, DATA_FOLDER, SUPPORTED_FORMATS
+from pipeline.rag_pipeline import run_pipeline, SUPPORTED_FORMATS
 import os
 from typing import List
+from google.cloud import storage
 
 router = APIRouter()
 
 @router.get("/documents")
 def list_docs():
     """List of documents currently in data folder"""
+    client = storage.Client()
+    bucket = client.bucket("document-intelligence-crew-data")
+    blobs = bucket.list_blobs(prefix="contracts/")
+
     files = [
-        f for f in os.listdir(DATA_FOLDER)
-        if os.path.splitext(f)[1].lower() in SUPPORTED_FORMATS
+        os.path.basename(blob.name) 
+        for blob in blobs 
+        if os.path.splitext(blob.name)[1].lower() in {".pdf", ".docx", ".xlsx"}
     ]
+
     return {
         "count": len(files),
-        "documents": files,
-        "data_folder": DATA_FOLDER
+        "documents": files
     }
 
 @router.post("/ingest")
@@ -40,9 +46,11 @@ async def upload_documents(files: List[UploadFile] = File(...)):
     Upload one or more contract documents (PDF, DOCX, XLSX).
     Automatically ingests into ChromaDB after upload.
     """
+    client = storage.Client()
+    bucket = client.bucket("document-intelligence-crew-data")
     uploaded = []
     failed = []
-
+    
     for file in files:
         ext = os.path.splitext(file.filename)[1].lower()
         if ext not in SUPPORTED_FORMATS:
@@ -52,10 +60,9 @@ async def upload_documents(files: List[UploadFile] = File(...)):
             })
             continue
 
-        dest_path = os.path.join(DATA_FOLDER, file.filename)
         try:
-            with open(dest_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
+            blob = bucket.blob(f"contracts/{file.filename}")
+            blob.upload_from_file(file.file)
             uploaded.append(file.filename)
         except Exception as e:
             failed.append({"file": file.filename, "reason": str(e)})
@@ -68,5 +75,5 @@ async def upload_documents(files: List[UploadFile] = File(...)):
         "status": "success",
         "uploaded": uploaded,
         "failed": failed,
-        "message": f"{len(uploaded)} file(s) uploaded and ingested into ChromaDB"
+        "message": f"{len(uploaded)} file(s) uploaded to GCS and ingested into PineVector DB"
     }

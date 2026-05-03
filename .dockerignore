@@ -1,0 +1,12 @@
+env/
+.env
+__pycache__/
+*.pyc
+*.pyo
+.git/
+logs/
+data/
+chroma_store/
+*.ipynb
+.ipynb_checkpoints/
+.vscode/

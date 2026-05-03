@@ -9,7 +9,8 @@ st.set_page_config(
     layout="wide"
 )
 
-API_BASE = "http://localhost:8000"
+#API_BASE = "http://localhost:8000"
+API_BASE = os.environ.get("API_BASE", "http://localhost:8000")
 
 st.title("📄 Document Intelligence Crew")
 st.markdown("*Multi-agent AI system for enterprise contract analysis*")
@@ -18,7 +19,7 @@ st.divider()
 with st.sidebar:
     st.header("⚙️ System Status")
     try:
-        response = requests.get(f"{API_BASE}/health", timeout=3)
+        response = requests.get(f"{API_BASE}/health", timeout=30)
         if response.status_code == 200:
             st.success("✅ API Online")
         else:
