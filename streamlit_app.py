@@ -198,9 +198,8 @@ with main_col2:
             pass  # best-effort; clean up UI regardless
         st.session_state.job_id = None
         st.session_state.analysis_result = None
-        st.session_state.analysis_error = None
-        st.info("⚠️ Cancellation signal sent. The current agent call may finish briefly in the background.")
-        st.stop()
+        st.session_state.analysis_error = "Cancelled by user"
+        st.rerun()
 
     # ── Start: kick off a new background job ─────────────────────────────────
     if analyze_btn:

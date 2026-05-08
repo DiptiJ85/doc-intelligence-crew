@@ -57,20 +57,17 @@ def download_from_gcs():
 #Extractors
 def extract_pdf(filepath):
     """Extract text from PDF file using pymupdf"""
-    doc =fitz.open(filepath)
-    sections=[]
-    for page_num, page in enumerate(doc):
-        text = page.get_text().strip()
-        if text:
-            sections.append(
-                {
-                    "content" : text,
-                    "section_type" : "page",
-                    "section_id" : f"page_{page_num+1}"
-                }
-            )
-    doc.close()
-    print(f"PDF extracted : {len(sections)} pages extracted")
+    sections = []
+    with fitz.open(filepath) as doc:
+        for page_num, page in enumerate(doc):
+            text = page.get_text().strip()
+            if text:
+                sections.append({
+                    "content": text,
+                    "section_type": "page",
+                    "section_id": f"page_{page_num + 1}"
+                })
+    print(f"PDF extracted: {len(sections)} pages extracted")
     return sections
 
 def extract_docx(filepath):
@@ -146,7 +143,6 @@ def extract_xlsx(filepath):
     return sections
 
 def load_all_documents(folder_path):
-    SUPPORTED_FORMATS = {".pdf", ".docx", ".xlsx"}
     documents = {} 
     files = [
         f for f in os.listdir(folder_path)

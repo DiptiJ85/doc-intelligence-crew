@@ -7,7 +7,7 @@ def create_analysis_task(analyst_agent, extraction_task):
         Using the extracted contract data, perform a thorough risk analysis.
         Classify each risk as CRITICAL, HIGH, MODERATE, LOW.
         Calculate overall financial exposure.
-        Flag any compliance or regulatroy issues.
+        Flag any compliance or regulatory issues.
         """,
         expected_output="Risk analysis with risks classified by severity and overall risk score",
         output_pydantic=AnalysisResult,

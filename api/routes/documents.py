@@ -1,5 +1,5 @@
-from fastapi import APIRouter, UploadFile, File
-import shutil
+from fastapi import APIRouter, UploadFile, File, HTTPException
+from io import BytesIO
 from pipeline.rag_pipeline import run_pipeline, SUPPORTED_FORMATS
 import os
 from typing import List
@@ -37,10 +37,7 @@ def ingest_documents():
             "message": "Documents ingested into ChromaDB successfully"
         }
     except Exception as e:
-        return {
-            "status": "error",
-            "message": str(e)
-        }
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/documents/upload")
 async def upload_documents(files: List[UploadFile] = File(...)):
@@ -71,7 +68,6 @@ async def upload_documents(files: List[UploadFile] = File(...)):
                 })
                 continue
 
-            from io import BytesIO
             blob = bucket.blob(f"contracts/{file.filename}")
             blob.upload_from_file(BytesIO(content))
             uploaded.append(file.filename)

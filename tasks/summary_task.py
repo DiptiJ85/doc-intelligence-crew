@@ -12,7 +12,7 @@ def create_summary_task(summary_agent, extraction_task,analysis_task, action_tas
 
         Write for CFO or General Counsel. Maximum 350 words.
         Be direct, specific, use numbers.""",
-        expected_output="A sharp executive summary in plan prose, max 300 words",
+        expected_output="A sharp executive summary in plain prose, max 300 words",
         agent = summary_agent,
         context=[extraction_task, analysis_task, action_task]
     )

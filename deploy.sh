@@ -58,6 +58,7 @@ gcloud run deploy doc-intelligence-api \
     --memory=2Gi \
     --cpu=2 \
     --min-instances=1 \
+    --max-instances=1 \
     --set-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest,PINECONE_API_KEY=PINECONE_API_KEY:latest,CHROMA_GOOGLE_GENAI_API_KEY=CHROMA_GOOGLE_GENAI_API_KEY:latest \
     --set-env-vars=PINECONE_INDEX=doc-intelligence \
     --project=$PROJECT_ID

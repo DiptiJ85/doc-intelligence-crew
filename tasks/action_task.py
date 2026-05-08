@@ -9,7 +9,7 @@ def create_action_task(action_agent, analysis_task):
         Assign clear ownership to each action item.
         Determine if executive escalation is required.
         """,
-        expected_output="Actionable plan with prioroties, owners and escalation recommendation",
+        expected_output="Actionable plan with priorities, owners and escalation recommendation",
         output_pydantic=ActionPlan,
         agent = action_agent,
         context=[analysis_task]

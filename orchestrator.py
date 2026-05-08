@@ -70,10 +70,14 @@ def run_crew(user_request: str, cancel_event=None):
 
     _check_cancel(cancel_event)
 
+    def _step_callback(step_output):
+        _check_cancel(cancel_event)
+
     crew = Crew(
         agents=[rag_agent, extractor_agent, analyst_agent, action_agent, summary_agent],
         tasks=[rag_task, extraction_task, analysis_task, action_task, summary_task],
         process=Process.sequential,
+        step_callback=_step_callback,
         verbose=True
     )
     logger.info("Kicking off crew...")
