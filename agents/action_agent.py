@@ -7,6 +7,7 @@ def create_action_agent():
     goal="Convert risk analysis into a concrete, prioritized action plan with clear owners",
     backstory="""Senior procurement director who has managed $500M+ in vendor contracts.
     You turn risk findings into clear, actionable steps with realistic timelines""",
-    llm = get_llm(),
+    llm=get_llm(),
+    max_iter=5,
     verbose=True
 )

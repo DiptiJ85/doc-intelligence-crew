@@ -25,10 +25,8 @@ def create_rag_task(rag_agent):
     Run a minimum of 5 searches with different queries.
     Compile ALL retrieved information into one comprehensive context document.
 
-    STEP 2 — RE-RANK (MANDATORY)
-    After EVERY search_contracts call, immediately pass its full output to rerank_chunks.
-    You can pass the raw search_contracts output directly — no reformatting needed.
-    Never pass raw search results downstream without re-ranking first.
+    search_contracts already returns the top 3 results ranked by relevance score.
+    Compile ALL search results into one comprehensive context document.
     """,
     expected_output="""
     A comprehensive context document containing ALL retrieved information

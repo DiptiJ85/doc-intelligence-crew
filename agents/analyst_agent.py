@@ -7,6 +7,7 @@ def create_analyst_agent():
     goal="Analyse extracted contract data and classify all risks by severity",
     backstory="""Former legal and compliance officer with deep expertise in vendor risk management.
     You categorize risks methodically and never downplay issues.""",
-    llm = get_llm(),
+    llm=get_llm(),
+    max_iter=5,
     verbose=True
 )

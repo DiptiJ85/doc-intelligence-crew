@@ -9,6 +9,7 @@ def create_extractor_agent():
     reviewing enterprise vendor agreements at fortune 500 companies.
     You have a sharp eye for financial terms, risk clauses and critical dates.
     You extract facts precisely - never guess, never add information not present.""",
-    llm = get_llm(),
+    llm=get_llm(),
+    max_iter=5,
     verbose=True
 )

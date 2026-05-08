@@ -1,33 +1,29 @@
 from crewai import Task
-from schemas.contract_schemas import ExtractedDoc
+from schemas.contract_schemas import ExtractionResults
 
 
 def create_extraction_task(extractor_agent, rag_task):
     return Task(
-    description=f"""
+        description="""
         Using ONLY the retrieved context from the RAG agent,
-        extract all structured contract information.
+        extract structured contract information for EVERY vendor mentioned.
         Do NOT make assumptions beyond what is in the context.
-        Extract data for ALL vendors mentioned.
 
-        Extract the following:
-        1. Vendor name and contract  ID
-        2. Contract value and payment terms
-        3. Contract start and end dates
-        4. Auto-renewal status and critical deadlines
-        5. List of all services with cost
-        6. Number and contact details found in the document
-        7. Names and contact details found in the document
+        For each vendor contract found, extract:
+        1. contract_id — unique identifier (use vendor name + year if no ID present)
+        2. vendor_name — name of the vendor
+        3. contract_value — annual value in USD as a number (use 0.0 if not found)
+        4. start_date — contract start date as a string
+        5. end_date — contract end date as a string
+        6. auto_renewal — true or false
+        7. services — list of services covered
+        8. risks — list of identified risks
+        9. contacts — names and contact details found
+
+        Return one entry per vendor in the contracts list.
         """,
-    expected_output="""
-    A clearly structured extraction with labeled sections for:
-    - Contract Metadata (ID, vendor, dates, value)
-    - Services Breakdown (itemized list)  
-    - Risk Summary (count by severity)
-    - Contacts Found (names, emails, phones)
-    - Critical Alerts (anything requiring immediate action)
-    """,
-    output_pydantic=ExtractedDoc,
-    agent=extractor_agent,
-    context=[rag_task]
-)
+        expected_output="An ExtractionResults object with a contracts list, one ExtractedDoc per vendor.",
+        output_pydantic=ExtractionResults,
+        agent=extractor_agent,
+        context=[rag_task]
+    )
