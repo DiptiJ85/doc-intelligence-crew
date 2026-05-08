@@ -7,6 +7,8 @@ from google.cloud import storage
 
 router = APIRouter()
 
+MAX_FILE_BYTES = 50 * 1024 * 1024  # 50 MB
+
 @router.get("/documents")
 def list_docs():
     """List of documents currently in data folder"""
@@ -61,8 +63,17 @@ async def upload_documents(files: List[UploadFile] = File(...)):
             continue
 
         try:
+            content = await file.read()
+            if len(content) > MAX_FILE_BYTES:
+                failed.append({
+                    "file": file.filename,
+                    "reason": f"Exceeds 50 MB limit ({len(content) / (1024 * 1024):.1f} MB)"
+                })
+                continue
+
+            from io import BytesIO
             blob = bucket.blob(f"contracts/{file.filename}")
-            blob.upload_from_file(file.file)
+            blob.upload_from_file(BytesIO(content))
             uploaded.append(file.filename)
         except Exception as e:
             failed.append({"file": file.filename, "reason": str(e)})

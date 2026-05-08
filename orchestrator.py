@@ -22,28 +22,54 @@ import time
 logger = get_logger(__name__)
 
 
-def run_crew(user_request:str):
+class CrewCancelledError(Exception):
+    pass
+
+
+def _check_cancel(cancel_event):
+    if cancel_event is not None and cancel_event.is_set():
+        raise CrewCancelledError("Run cancelled by user")
+
+
+def run_crew(user_request: str, cancel_event=None):
+    """
+    Run the 5-agent crew sequentially.
+
+    cancel_event: optional threading.Event. When set, the run is aborted
+    between agent initializations (best-effort — cannot interrupt a running LLM call).
+    """
     logger.info("="*60)
     logger.info("Crew Run Started")
     logger.info(f"User Request: {user_request}")
     logger.info("="*60)
-    logger.info("Initializing agents..")        
-                
+    logger.info("Initializing agents..")
+
     rag_agent = create_rag_agent()
-    extractor_agent = create_extractor_agent()  
+    _check_cancel(cancel_event)
+
+    extractor_agent = create_extractor_agent()
+    _check_cancel(cancel_event)
+
     analyst_agent = create_analyst_agent()
+    _check_cancel(cancel_event)
+
     action_agent = create_action_agent()
+    _check_cancel(cancel_event)
+
     summary_agent = create_summary_agent()
+    _check_cancel(cancel_event)
     logger.info("✅ All agents initialized")
-    
-    logger.info("Initializing tasks..")  
-    rag_task = create_rag_task(rag_agent)   
+
+    logger.info("Initializing tasks..")
+    rag_task = create_rag_task(rag_agent)
     extraction_task = create_extraction_task(extractor_agent, rag_task)
     analysis_task = create_analysis_task(analyst_agent, extraction_task)
     action_task = create_action_task(action_agent, analysis_task)
-    summary_task = create_summary_task(summary_agent, extraction_task, analysis_task, action_task ) 
+    summary_task = create_summary_task(summary_agent, extraction_task, analysis_task, action_task)
     logger.info("✅ All tasks initialized")
-    
+
+    _check_cancel(cancel_event)
+
     crew = Crew(
         agents=[rag_agent, extractor_agent, analyst_agent, action_agent, summary_agent],
         tasks=[rag_task, extraction_task, analysis_task, action_task, summary_task],
